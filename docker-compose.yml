@@ -11,16 +11,22 @@ services:
       - ./pgdata:/var/lib/postgresql/data
       - ./init:/docker-entrypoint-initdb.d
     ports:
-      - "5434:${POSTGRES_PORT}" # наружу отдаём на 5433, внутри всё ещё 5432
+      - "5434:5432" # наружу отдаём на 5434, внутри Postgres слушает на 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   bot:
     build: ./bot
     container_name: ${POSTGRES_DB}-bot
     restart: always
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       BOT_TOKEN: ${BOT_TOKEN}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     env_file:
       - .env
