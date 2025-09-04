@@ -50,3 +50,6 @@ migrations/
 # OS
 .DS_Store
 Thumbs.db
+
+#postgres
+/pgdata

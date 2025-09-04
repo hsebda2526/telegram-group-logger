@@ -1,45 +1,26 @@
 services:
   db:
-    image: postgres:15-alpine
-    container_name: tgl_db
+    image: postgres:15
+    container_name: ${POSTGRES_DB}-db
+    restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
     ports:
-      # Раскомментируйте при необходимости внешнего доступа к БД
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      - "5434:${POSTGRES_PORT}" # наружу отдаём на 5433, внутри всё ещё 5432
 
   bot:
-    build:
-      context: .
-      dockerfile: bot/Dockerfile
-    container_name: tgl_bot
-    env_file: .env
+    build: ./bot
+    container_name: ${POSTGRES_DB}-bot
+    restart: always
     depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-
-  api:
-    build:
-      context: .
-      dockerfile: api/Dockerfile
-    container_name: tgl_api
-    env_file: .env
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "${API_PORT}:8000"
-    restart: unless-stopped
-
-volumes:
-  pgdata:
+      - db
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    env_file:
+      - .env
